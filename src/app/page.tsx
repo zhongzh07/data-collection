@@ -1,4 +1,5 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
+import { CollectionForm } from "@/components/CollectionForm";
 import { LogoutButton } from "@/components/LogoutButton";
 import { createClient } from "@/lib/supabase/server";
 
@@ -8,64 +9,51 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: profile } = user
-    ? await supabase
+  if (!user) {
+    redirect("/login");
+  }
+
+  const [{ data: profile }, { data: templates }, { data: entries }] =
+    await Promise.all([
+      supabase
         .from("profiles")
         .select("display_name")
         .eq("id", user.id)
-        .maybeSingle()
-    : { data: null };
+        .maybeSingle(),
+      supabase
+        .from("templates")
+        .select("id, slug, name, description, field_schema, is_system, created_at")
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("entries")
+        .select("id, template_id, title, description, collected_at, created_at")
+        .order("created_at", { ascending: false })
+        .limit(8),
+    ]);
 
   return (
-    <main className="mx-auto flex min-h-full w-full max-w-xl flex-col gap-6 px-6 py-16 font-sans">
-      <div className="flex items-start justify-between gap-4">
+    <main className="mx-auto flex min-h-full w-full max-w-6xl flex-col gap-6 px-5 py-8 font-sans sm:px-8">
+      <div className="flex flex-col justify-between gap-4 border-b border-zinc-200 pb-5 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm text-zinc-500">种种 · data-collection</p>
           <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-900">
-            信息收集系统后端
+            信息采集台
           </h1>
-          <p className="mt-2 text-zinc-600">
-            MVP：统一 Schema + Auth + Storage。六个模块共用 entries 表。
+          <p className="mt-2 max-w-2xl text-sm text-zinc-600">
+            按后端仓库 Schema 合并：六个模块共用 templates / entries，
+            图片写入 entry-images，标签写入 tags / entry_tags。
           </p>
         </div>
-        {user ? <LogoutButton /> : null}
+        <div className="flex items-center gap-3 text-sm text-zinc-600">
+          <span>{profile?.display_name ?? user.email}</span>
+          <LogoutButton />
+        </div>
       </div>
 
-      <section className="space-y-2 rounded border border-zinc-200 p-4 text-sm text-zinc-700">
-        <p className="font-medium text-zinc-900">登录状态</p>
-        {user ? (
-          <ul className="list-inside list-disc space-y-1">
-            <li>已登录</li>
-            <li>邮箱：{user.email}</li>
-            <li>
-              user_id：
-              <code className="rounded bg-zinc-100 px-1 text-xs">{user.id}</code>
-            </li>
-            <li>profiles.display_name：{profile?.display_name ?? "（无）"}</li>
-          </ul>
-        ) : (
-          <p>
-            未登录。请先{" "}
-            <Link href="/login" className="underline">
-              登录
-            </Link>{" "}
-            或{" "}
-            <Link href="/signup" className="underline">
-              注册
-            </Link>
-            。
-          </p>
-        )}
-      </section>
-
-      <section className="space-y-2 text-sm text-zinc-600">
-        <p>下一步：上传图片 + 提交 entries（带上当前 user_id）。</p>
-        <p>
-          同事对接：登录后即可开发六个采集表单；字段见{" "}
-          <code className="rounded bg-zinc-100 px-1">src/types/collection.ts</code>
-          。
-        </p>
-      </section>
+      <CollectionForm
+        templates={templates ?? []}
+        initialEntries={entries ?? []}
+      />
     </main>
   );
 }
