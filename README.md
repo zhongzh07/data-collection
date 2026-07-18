@@ -51,11 +51,12 @@ cp .env.example .env.local
 
 Dashboard → **Authentication → Providers**，至少开启 **Email**。
 
-可选：Authentication → URL Configuration，把本地回调写成：
+Authentication → **URL Configuration**：
 
-`http://localhost:3000/auth/callback`
+- Site URL：`http://localhost:3000`
+- Redirect URLs：`http://localhost:3000/auth/callback`
 
-（回调路由下一阶段再补。）
+开发阶段建议关闭 **Confirm email**，否则注册后须点邮件才能登录。
 
 ## 本地运行
 
@@ -64,12 +65,21 @@ npm install
 npm run dev
 ```
 
+打开：
+
+- `/signup` 注册
+- `/login` 登录
+- `/` 查看当前 user_id / profiles（未登录会跳到登录页）
+
 ## 目录
 
 ```
-src/lib/supabase/   # browser / server / admin 客户端
-src/types/           # 给前后端共用的类型
-supabase/migrations/ # Schema 源文件
+src/app/login|signup     # 极简登录注册（后端验收用）
+src/app/auth/callback    # Auth 回调
+src/middleware.ts        # 刷新 session + 未登录保护
+src/lib/supabase/        # browser / server / admin / middleware
+src/types/               # 给前后端共用的类型
+supabase/migrations/     # Schema 源文件
 ```
 
 ## Git
