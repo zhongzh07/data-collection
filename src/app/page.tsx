@@ -59,11 +59,35 @@ export default async function Home() {
       </section>
 
       <section className="space-y-2 text-sm text-zinc-600">
-        <p>下一步：上传图片 + 提交 entries（带上当前 user_id）。</p>
         <p>
-          同事对接：登录后即可开发六个采集表单；字段见{" "}
+          图片上传：
+          <Link href="/upload-test" className="ml-1 underline">
+            /upload-test
+          </Link>
+        </p>
+        <p>
+          采集提交验收：
+          <Link href="/entry-test" className="ml-1 underline">
+            /entry-test
+          </Link>
+          （极简页；六个正式表单归同事 B）
+        </p>
+        <p>
+          封装：
+          <code className="rounded bg-zinc-100 px-1">
+            uploadImage
+          </code>
+          {" + "}
+          <code className="rounded bg-zinc-100 px-1">
+            createEntry
+          </code>
+          （见{" "}
+          <code className="rounded bg-zinc-100 px-1">src/lib/collection/</code>
+          ）
+        </p>
+        <p>
+          字段类型：{" "}
           <code className="rounded bg-zinc-100 px-1">src/types/collection.ts</code>
-          。
         </p>
       </section>
     </main>

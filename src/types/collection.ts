@@ -68,6 +68,40 @@ export type CreateEntryInput = {
   address?: string;
   collected_at?: string;
   tags?: string[];
+  /** Shortcut: storage paths from uploadImage */
   media_paths?: string[];
+  /** Prefer when you also have mime_type from uploadImage */
+  media?: Array<{ storage_path: string; mime_type?: string | null }>;
   extra?: Record<string, unknown>;
+};
+
+export const TEMPLATE_SLUGS: TemplateSlug[] = [
+  "place",
+  "plant",
+  "weather",
+  "animal",
+  "story",
+  "custom",
+];
+
+
+/** Storage bucket for entry images (private). */
+export const ENTRY_IMAGES_BUCKET = "entry-images" as const;
+
+export const ENTRY_IMAGE_MAX_BYTES = 10 * 1024 * 1024; // 10MB
+
+export const ENTRY_IMAGE_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+] as const;
+
+export type EntryImageMimeType = (typeof ENTRY_IMAGE_MIME_TYPES)[number];
+
+export type UploadImageResult = {
+  storage_path: string;
+  mime_type: string;
+  /** Signed URL for short-lived preview (private bucket). */
+  signed_url: string | null;
 };

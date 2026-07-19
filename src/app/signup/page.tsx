@@ -17,29 +17,53 @@ export default function SignupPage() {
     e.preventDefault();
     setError(null);
     setMessage(null);
+
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
+      setError("缺少 Supabase 环境变量，请检查 .env.local 并重启 npm run dev。");
+      return;
+    }
+
     setLoading(true);
 
-    const supabase = createClient();
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-    });
+    try {
+      const supabase = createClient();
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
 
-    setLoading(false);
+      if (signUpError) {
+        setError(signUpError.message);
+        return;
+      }
 
-    if (signUpError) {
-      setError(signUpError.message);
-      return;
+      // 开启邮箱确认时通常没有 session；假成功（已注册邮箱）时 user 可能为空 identities
+      const identities = data.user?.identities ?? [];
+      if (data.user && identities.length === 0) {
+        setError("该邮箱可能已注册，请直接登录，或换一个邮箱。");
+        return;
+      }
+
+      if (!data.session) {
+        setMessage(
+          "注册请求已提交。若开启了邮箱确认，请到邮箱点确认链接后再登录；开发阶段可在 Supabase → Authentication → Providers → Email 关闭 Confirm email。",
+        );
+        return;
+      }
+
+      router.replace("/");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "注册失败，请稍后重试。");
+    } finally {
+      setLoading(false);
     }
-
-    // 若开启了邮箱确认，可能没有 session
-    if (!data.session) {
-      setMessage("注册成功。若项目开启了邮箱确认，请先到邮箱点开确认链接，再登录。");
-      return;
-    }
-
-    router.replace("/");
-    router.refresh();
   }
 
   return (
@@ -47,7 +71,9 @@ export default function SignupPage() {
       <div>
         <p className="text-sm text-zinc-500">种种 · data-collection</p>
         <h1 className="mt-2 text-2xl font-semibold text-zinc-900">注册</h1>
-        <p className="mt-2 text-sm text-zinc-600">邮箱密码注册（MVP，不做美化）</p>
+        <p className="mt-2 text-sm text-zinc-600">
+          邮箱密码注册（MVP）。请求可能需数秒，请稍候。
+        </p>
       </div>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
@@ -83,7 +109,7 @@ export default function SignupPage() {
           disabled={loading}
           className="rounded bg-zinc-900 px-4 py-2 text-sm text-white disabled:opacity-60"
         >
-          {loading ? "注册中…" : "注册"}
+          {loading ? "注册中…（可能需 10 秒）" : "注册"}
         </button>
       </form>
 

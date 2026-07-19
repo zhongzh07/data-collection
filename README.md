@@ -70,14 +70,51 @@ npm run dev
 - `/signup` 注册
 - `/login` 登录
 - `/` 查看当前 user_id / profiles（未登录会跳到登录页）
+- `/upload-test` 登录后上传图片到 Storage（验收用）
+- `/entry-test` 登录后提交一条采集（极简验收；六个正式页归 B）
+
+## 图片上传 + 采集提交（给前端 B）
+
+```ts
+import { uploadImage } from "@/lib/collection/upload-image";
+import { createEntry, listEntries } from "@/lib/collection/create-entry";
+
+const uploaded = await uploadImage(file);
+
+const entry = await createEntry({
+  template_slug: "plant", // place | plant | weather | animal | story | custom
+  title: "路边的野花",
+  description: "短描述",
+  body: "正文",
+  lat: 23.1,
+  lng: 110.2,
+  address: "某处",
+  tags: ["春天", "路边"],
+  media: [
+    {
+      storage_path: uploaded.storage_path,
+      mime_type: uploaded.mime_type,
+    },
+  ],
+});
+
+const rows = await listEntries({ template_slug: "plant" });
+```
+
+- Bucket：`entry-images`（私有，≤10MB，jpeg/png/webp/gif）
+- 路径第一段必须是当前用户 id（Storage RLS）
+- `user_id` 由登录态自动带上，表单无需填写
 
 ## 目录
 
 ```
 src/app/login|signup     # 极简登录注册（后端验收用）
+src/app/upload-test      # 图片上传验收页
+src/app/entry-test       # 采集提交验收页（非产品 UI）
 src/app/auth/callback    # Auth 回调
 src/middleware.ts        # 刷新 session + 未登录保护
 src/lib/supabase/        # browser / server / admin / middleware
+src/lib/collection/      # uploadImage / createEntry / listEntries
 src/types/               # 给前后端共用的类型
 supabase/migrations/     # Schema 源文件
 ```
