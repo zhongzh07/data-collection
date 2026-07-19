@@ -62,6 +62,15 @@ export default async function Home() {
 
       <section className="space-y-2 text-sm text-zinc-600">
         <p>
+          现场动态表单：
+          <Link
+            href="/collect/adventurex-profile?source=poster"
+            className="ml-1 underline"
+          >
+            /collect/adventurex-profile?source=poster
+          </Link>
+        </p>
+        <p>
           图片上传：
           <Link href="/upload-test" className="ml-1 underline">
             /upload-test

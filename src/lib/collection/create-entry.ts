@@ -120,6 +120,22 @@ export async function listTemplates(
   return (data ?? []) as Template[];
 }
 
+export async function getTemplateBySlug(
+  slug: string,
+  options: { client?: SupabaseClient; activeOnly?: boolean } = {},
+): Promise<Template | null> {
+  const supabase = resolveClient(options.client);
+  let query = supabase.from("templates").select("*").eq("slug", slug);
+
+  if (options.activeOnly !== false) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error } = await query.maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as Template | null) ?? null;
+}
+
 /**
  * Create a collection entry with optional tags, media, campaign fields, and contact.
  * Media files must already be uploaded (e.g. via uploadImage).

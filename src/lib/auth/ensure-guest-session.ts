@@ -1,9 +1,23 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 
+function isMissingSessionError(message: string): boolean {
+  const m = message.toLowerCase();
+  return (
+    m.includes("auth session missing") ||
+    m.includes("session missing") ||
+    m.includes("not authenticated") ||
+    m.includes("invalid jwt") ||
+    m.includes("jwt expired")
+  );
+}
+
 /**
  * Ensure there is a signed-in user for collection flows.
  * If none, create an anonymous (guest) session via Supabase Auth.
+ *
+ * Note: when logged out, getUser() may return error "Auth session missing!"
+ * with user=null — that is normal and must not block signInAnonymously().
  */
 export async function ensureGuestSession(
   client?: SupabaseClient,
@@ -15,7 +29,7 @@ export async function ensureGuestSession(
     error: getUserError,
   } = await supabase.auth.getUser();
 
-  if (getUserError) {
+  if (getUserError && !isMissingSessionError(getUserError.message)) {
     throw new Error(getUserError.message);
   }
 
