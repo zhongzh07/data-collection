@@ -36,8 +36,17 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   const isAuthPage = path === "/login" || path === "/signup";
+  // Guest / field flows: page is public; client will signInAnonymously if needed.
+  const isGuestCollect =
+    path === "/entry-test" ||
+    path === "/upload-test" ||
+    path.startsWith("/collect/") ||
+    path.startsWith("/share/");
   const isPublic =
-    isAuthPage || path.startsWith("/auth/") || path === "/favicon.ico";
+    isAuthPage ||
+    isGuestCollect ||
+    path.startsWith("/auth/") ||
+    path === "/favicon.ico";
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

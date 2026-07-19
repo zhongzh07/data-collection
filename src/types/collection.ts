@@ -4,16 +4,41 @@ export type TemplateSlug =
   | "weather"
   | "animal"
   | "story"
-  | "custom";
+  | "custom"
+  | "adventurex-profile"
+  | "today-menu"
+  | "booth-record";
+
+export type TemplateRenderType =
+  | "form"
+  | "result-card"
+  | "archive"
+  | "route-record";
+
+export type EntryStatus = "draft" | "submitted";
+
+export type GeneratedPageStatus = "pending" | "ready" | "failed";
+
+export type FieldSchemaItem = {
+  key: string;
+  label: string;
+  type: string;
+  required?: boolean;
+  options?: string[];
+};
 
 export type Template = {
   id: string;
   slug: TemplateSlug;
   name: string;
   description: string | null;
-  field_schema: unknown[];
+  field_schema: FieldSchemaItem[] | unknown[];
   is_system: boolean;
+  version: number;
+  render_type: TemplateRenderType;
+  is_active: boolean;
   created_at: string;
+  updated_at: string;
 };
 
 export type Profile = {
@@ -36,6 +61,37 @@ export type Entry = {
   address: string | null;
   collected_at: string;
   extra: Record<string, unknown>;
+  source: string | null;
+  campaign: string | null;
+  status: EntryStatus;
+  is_public: boolean;
+  submitted_at: string | null;
+  template_version: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EntryContact = {
+  id: string;
+  entry_id: string;
+  wechat: string | null;
+  email: string | null;
+  join_beta: boolean;
+  allow_research: boolean;
+  allow_contact: boolean;
+  created_at: string;
+};
+
+export type GeneratedPage = {
+  id: string;
+  entry_id: string;
+  template_slug: string;
+  share_slug: string;
+  render_data: Record<string, unknown>;
+  status: GeneratedPageStatus;
+  error_message: string | null;
+  /** Copied from entries.is_public on insert; used by public RLS */
+  is_public: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -58,10 +114,19 @@ export type Tag = {
   created_at: string;
 };
 
+export type EntryContactInput = {
+  wechat?: string;
+  email?: string;
+  join_beta?: boolean;
+  allow_research?: boolean;
+  allow_contact?: boolean;
+};
+
 export type CreateEntryInput = {
   template_slug: TemplateSlug;
   title: string;
   description?: string;
+  /** Free-form long text (e.g. booth notes). Not for structured answers. */
   body?: string;
   lat?: number;
   lng?: number;
@@ -72,7 +137,20 @@ export type CreateEntryInput = {
   media_paths?: string[];
   /** Prefer when you also have mime_type from uploadImage */
   media?: Array<{ storage_path: string; mime_type?: string | null }>;
+  /**
+   * Structured answers matching template.field_schema.
+   * Do NOT put contact/consent here — use `contact`.
+   */
   extra?: Record<string, unknown>;
+  /** Traffic source: booth | poster | friend | partner | xiaohongshu … */
+  source?: string;
+  /** Campaign id, e.g. adventurex-2026 */
+  campaign?: string;
+  status?: EntryStatus;
+  /** Whether a public result page may be generated/shared */
+  is_public?: boolean;
+  /** Optional contact + consents (written to entry_contacts, not extra) */
+  contact?: EntryContactInput;
 };
 
 export const TEMPLATE_SLUGS: TemplateSlug[] = [
@@ -82,8 +160,10 @@ export const TEMPLATE_SLUGS: TemplateSlug[] = [
   "animal",
   "story",
   "custom",
+  "adventurex-profile",
+  "today-menu",
+  "booth-record",
 ];
-
 
 /** Storage bucket for entry images (private). */
 export const ENTRY_IMAGES_BUCKET = "entry-images" as const;

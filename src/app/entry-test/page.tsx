@@ -7,6 +7,7 @@ import {
   listEntries,
   listTemplates,
 } from "@/lib/collection/create-entry";
+import { getCurrentLocation } from "@/lib/collection/get-location";
 import { uploadImage } from "@/lib/collection/upload-image";
 import {
   TEMPLATE_SLUGS,
@@ -28,9 +29,24 @@ export default function EntryTestPage() {
   const [tags, setTags] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
+  const [locating, setLocating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successId, setSuccessId] = useState<string | null>(null);
   const [entries, setEntries] = useState<ListedEntry[]>([]);
+
+  async function onLocate() {
+    setError(null);
+    setLocating(true);
+    try {
+      const pos = await getCurrentLocation();
+      setLat(String(pos.lat));
+      setLng(String(pos.lng));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "定位失败");
+    } finally {
+      setLocating(false);
+    }
+  }
 
   async function refreshList() {
     const rows = await listEntries({ limit: 10 });
@@ -117,7 +133,7 @@ export default function EntryTestPage() {
           采集提交验收
         </h1>
         <p className="mt-2 text-sm text-zinc-600">
-          后端验收用极简表单，不是六个正式页面。正式 UI 由同事 B 负责。
+          后端验收用极简表单。未登录会自动创建访客会话（匿名用户），无需邮箱密码。
         </p>
       </div>
 
@@ -175,27 +191,37 @@ export default function EntryTestPage() {
           />
         </label>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className="flex flex-col gap-1">
-            <span>纬度</span>
-            <input
-              type="number"
-              step="any"
-              value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              className="rounded border border-zinc-300 px-3 py-2"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span>经度</span>
-            <input
-              type="number"
-              step="any"
-              value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              className="rounded border border-zinc-300 px-3 py-2"
-            />
-          </label>
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1">
+              <span>纬度</span>
+              <input
+                type="number"
+                step="any"
+                value={lat}
+                onChange={(e) => setLat(e.target.value)}
+                className="rounded border border-zinc-300 px-3 py-2"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span>经度</span>
+              <input
+                type="number"
+                step="any"
+                value={lng}
+                onChange={(e) => setLng(e.target.value)}
+                className="rounded border border-zinc-300 px-3 py-2"
+              />
+            </label>
+          </div>
+          <button
+            type="button"
+            disabled={locating}
+            onClick={onLocate}
+            className="rounded border border-zinc-300 px-3 py-2 text-left disabled:opacity-60"
+          >
+            {locating ? "定位中…" : "获取当前位置"}
+          </button>
         </div>
 
         <label className="flex flex-col gap-1">

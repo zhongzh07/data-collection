@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureGuestSession } from "@/lib/auth/ensure-guest-session";
 import { createClient } from "@/lib/supabase/client";
 import {
   ENTRY_IMAGE_MAX_BYTES,
@@ -53,17 +54,7 @@ export async function uploadImage(
     );
   }
 
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError) {
-    throw new Error(userError.message);
-  }
-  if (!user) {
-    throw new Error("请先登录后再上传图片。");
-  }
+  const user = await ensureGuestSession(supabase);
 
   const rawName =
     options.fileName ||

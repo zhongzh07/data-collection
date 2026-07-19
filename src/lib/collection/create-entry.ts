@@ -1,9 +1,13 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureGuestSession } from "@/lib/auth/ensure-guest-session";
 import { createClient } from "@/lib/supabase/client";
 import type {
   CreateEntryInput,
   Entry,
+  EntryContact,
+  EntryContactInput,
   EntryMedia,
+  EntryStatus,
   Template,
   TemplateSlug,
 } from "@/types/collection";
@@ -16,6 +20,7 @@ export type CreatedEntry = Entry & {
   template_slug: TemplateSlug;
   tags: string[];
   media: Pick<EntryMedia, "id" | "storage_path" | "mime_type" | "sort_order">[];
+  contact: EntryContact | null;
 };
 
 export type ListEntriesOptions = {
@@ -29,13 +34,7 @@ function resolveClient(client?: SupabaseClient) {
 }
 
 async function requireUser(supabase: SupabaseClient) {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error) throw new Error(error.message);
-  if (!user) throw new Error("请先登录。");
-  return user;
+  return ensureGuestSession(supabase);
 }
 
 function normalizeTags(tags: string[] | undefined): string[] {
@@ -76,22 +75,55 @@ function resolveMedia(
   return out;
 }
 
+function normalizeContact(
+  contact: EntryContactInput | undefined,
+): {
+  wechat: string | null;
+  email: string | null;
+  join_beta: boolean;
+  allow_research: boolean;
+  allow_contact: boolean;
+} | null {
+  if (!contact) return null;
+
+  const wechat = contact.wechat?.trim() || null;
+  const email = contact.email?.trim() || null;
+  if (!wechat && !email) return null;
+
+  return {
+    wechat,
+    email,
+    join_beta: Boolean(contact.join_beta),
+    allow_research: Boolean(contact.allow_research),
+    allow_contact: Boolean(contact.allow_contact),
+  };
+}
+
+function resolveStatus(status: EntryStatus | undefined): EntryStatus {
+  return status === "draft" ? "draft" : "submitted";
+}
+
 export async function listTemplates(
-  options: { client?: SupabaseClient } = {},
+  options: { client?: SupabaseClient; activeOnly?: boolean } = {},
 ): Promise<Template[]> {
   const supabase = resolveClient(options.client);
-  const { data, error } = await supabase
-    .from("templates")
-    .select("*")
-    .order("slug", { ascending: true });
+  let query = supabase.from("templates").select("*").order("slug", {
+    ascending: true,
+  });
 
+  if (options.activeOnly !== false) {
+    query = query.eq("is_active", true);
+  }
+
+  const { data, error } = await query;
   if (error) throw new Error(error.message);
   return (data ?? []) as Template[];
 }
 
 /**
- * Create a collection entry with optional tags and media paths.
+ * Create a collection entry with optional tags, media, campaign fields, and contact.
  * Media files must already be uploaded (e.g. via uploadImage).
+ * Contact/consent go to entry_contacts — never into extra.
  */
 export async function createEntry(
   input: CreateEntryInput,
@@ -114,13 +146,16 @@ export async function createEntry(
 
   const { data: template, error: templateError } = await supabase
     .from("templates")
-    .select("id, slug")
+    .select("id, slug, version, is_active")
     .eq("slug", input.template_slug)
     .maybeSingle();
 
   if (templateError) throw new Error(templateError.message);
   if (!template) {
     throw new Error(`未知模块：${input.template_slug}`);
+  }
+  if (template.is_active === false) {
+    throw new Error(`模板已停用：${input.template_slug}`);
   }
 
   const media = resolveMedia(input);
@@ -131,6 +166,11 @@ export async function createEntry(
       );
     }
   }
+
+  const status = resolveStatus(input.status);
+  const submittedAt =
+    status === "submitted" ? new Date().toISOString() : null;
+  const contactPayload = normalizeContact(input.contact);
 
   const { data: entry, error: entryError } = await supabase
     .from("entries")
@@ -145,11 +185,32 @@ export async function createEntry(
       address: input.address?.trim() || null,
       collected_at: input.collected_at || new Date().toISOString(),
       extra: input.extra ?? {},
+      source: input.source?.trim() || null,
+      campaign: input.campaign?.trim() || null,
+      status,
+      is_public: Boolean(input.is_public),
+      submitted_at: submittedAt,
+      template_version: template.version ?? 1,
     })
     .select("*")
     .single();
 
   if (entryError) throw new Error(entryError.message);
+
+  let contact: EntryContact | null = null;
+  if (contactPayload) {
+    const { data: contactRow, error: contactError } = await supabase
+      .from("entry_contacts")
+      .insert({
+        entry_id: entry.id,
+        ...contactPayload,
+      })
+      .select("*")
+      .single();
+
+    if (contactError) throw new Error(contactError.message);
+    contact = contactRow as EntryContact;
+  }
 
   const tagNames = normalizeTags(input.tags);
   const tagIds: string[] = [];
@@ -176,7 +237,6 @@ export async function createEntry(
       .single();
 
     if (tagError) {
-      // Race: another request created the same tag
       const { data: again, error: againError } = await supabase
         .from("tags")
         .select("id")
@@ -227,6 +287,7 @@ export async function createEntry(
     template_slug: template.slug as TemplateSlug,
     tags: tagNames,
     media: mediaRows ?? [],
+    contact,
   };
 }
 

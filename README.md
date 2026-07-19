@@ -34,11 +34,13 @@ cp .env.example .env.local
 
 ## 2. 执行 Schema
 
-打开 Supabase → **SQL Editor**，粘贴并运行：
+打开 Supabase → **SQL Editor**，按顺序粘贴并运行：
 
-`supabase/migrations/20260718000000_init_info_collection.sql`
+1. `supabase/migrations/20260718000000_init_info_collection.sql` — 六模块底座  
+2. `supabase/migrations/20260719000000_field_conversion_layer.sql` — 现场转化层  
+3. `supabase/migrations/20260719000001_fix_generated_pages_public_rls.sql` — 公开结果页 RLS（若 2 已含修复可跳过）
 
-会创建：
+底座会创建：
 
 - `templates`（六个预设模块）
 - `profiles`（用户资料，注册自动创建）
@@ -47,9 +49,14 @@ cp .env.example .env.local
 - RLS（本人可读写）
 - Storage bucket `entry-images`
 
+转化层额外：`entries` 活动字段、`entry_contacts`、`generated_pages`、AdventureX 三模板。  
+字段契约见 [`docs/database-schema.md`](./docs/database-schema.md)。
+
+> 若从零执行，跑完 1+2 即可；`000001` / `000002` 是远程迭代中的幂等补丁，重复执行安全。
+
 ## 3. Auth
 
-Dashboard → **Authentication → Providers**，至少开启 **Email**。
+Dashboard → **Authentication → Providers**，开启 **Email**，以及现场用的 **Anonymous**。
 
 Authentication → **URL Configuration**：
 

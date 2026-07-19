@@ -35,8 +35,10 @@ export default async function Home() {
         <p className="font-medium text-zinc-900">登录状态</p>
         {user ? (
           <ul className="list-inside list-disc space-y-1">
-            <li>已登录</li>
-            <li>邮箱：{user.email}</li>
+            <li>{user.is_anonymous ? "已登录（游客 / 匿名）" : "已登录"}</li>
+            <li>
+              邮箱：{user.email ?? "（匿名用户无邮箱）"}
+            </li>
             <li>
               user_id：
               <code className="rounded bg-zinc-100 px-1 text-xs">{user.id}</code>
@@ -47,7 +49,7 @@ export default async function Home() {
           <p>
             未登录。请先{" "}
             <Link href="/login" className="underline">
-              登录
+              登录 / 游客登录
             </Link>{" "}
             或{" "}
             <Link href="/signup" className="underline">
